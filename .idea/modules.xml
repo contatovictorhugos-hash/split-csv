@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/split-csv.iml" filepath="$PROJECT_DIR$/split-csv.iml" />
+      <module fileurl="file://$PROJECT_DIR$/SplitCSV.iml" filepath="$PROJECT_DIR$/SplitCSV.iml" />
     </modules>
   </component>
 </project>
