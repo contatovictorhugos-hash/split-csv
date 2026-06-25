@@ -1,80 +1,110 @@
-# SplitCSV
+# Split CSV
 
-Utilitario Java para dividir arquivos CSV grandes em arquivos menores.
+> Splits a large CSV file into multiple smaller files with a configurable number of data rows per output file.
 
-O split e feito em modo streaming: o arquivo de entrada e lido uma unica vez, e apenas um arquivo de saida fica aberto por vez. Isso reduz I/O desnecessario e evita problemas com limite de descritores de arquivos do sistema operacional.
+![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 
-## Funcionalidades
+## Table of Contents
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [Ecosystem](#ecosystem)
+- [Contributing](#contributing)
 
-- Divide um CSV grande em partes menores.
-- Permite informar, no momento da execucao, quantas linhas de dados devem ir em cada arquivo.
-- Replica o cabecalho em todos os arquivos gerados quando `POSSUI_CABECALHO` esta habilitado.
-- Mantem apenas um `BufferedWriter` aberto por vez.
-- Gera arquivos com timestamp no nome para evitar sobrescrita acidental.
+## Overview
 
-## Configuracao
+Split CSV is a command-line utility that reads a single CSV file and divides it into multiple output files, each containing a user-defined number of data rows. The tool preserves the original header row in every output file, supports configurable character encoding (ISO-8859-1 by default), and generates timestamped filenames to avoid collisions. It is designed for scenarios where downstream systems impose row-count limits on CSV imports.
 
-As configuracoes principais ficam em [src/SplitCSV.java](src/SplitCSV.java):
+## Architecture
 
-```java
-private static final boolean POSSUI_CABECALHO = true;
-private static final long LINHAS_DADOS_POR_ARQUIVO_PADRAO = 10000;
-private static final Charset CHARSET = StandardCharsets.ISO_8859_1;
-private static final String INPUT_FILE = "input.csv";
-private static final String OUTPUT_DIR = "output";
+The application is a single-class Java program with no external dependencies:
+
+1. **Input** — Reads `input.csv` from the working directory.
+2. **Configuration** — Prompts the user for the number of data rows per file (defaults to 10,000).
+3. **Processing** — Streams through the input file, writing rows to sequentially numbered output files in the `output/` directory.
+4. **Output** — Each file is named `<basename>-<part>-<timestamp>.csv` and includes the header row.
+
+```
+input.csv (150,000 rows)
+    ↓ SplitCSV
+output/
+  ├── input-1-143025062026.csv   (10,000 rows + header)
+  ├── input-2-143025062026.csv   (10,000 rows + header)
+  ├── ...
+  └── input-15-143025062026.csv  (10,000 rows + header)
 ```
 
-Campos:
+## Tech Stack
 
-- `POSSUI_CABECALHO`: quando `true`, a primeira linha do arquivo de entrada e tratada como cabecalho e replicada em cada parte gerada.
-- `LINHAS_DADOS_POR_ARQUIVO_PADRAO`: valor usado quando o usuario apenas pressiona Enter na pergunta inicial.
-- `CHARSET`: encoding usado para ler e escrever os arquivos.
-- `INPUT_FILE`: caminho do CSV de entrada. Pode ser relativo, como `input.csv`, ou absoluto.
-- `OUTPUT_DIR`: diretorio onde os arquivos divididos serao criados. Pode ser relativo, como `output`, ou absoluto.
+| Layer | Technology |
+|---|---|
+| Language | Java (SE) |
+| I/O | `java.nio.file` (BufferedReader / BufferedWriter) |
+| Encoding | ISO-8859-1 (configurable in source) |
+| Build | Direct `javac` compilation (no build tool) |
 
-## Como Executar
+## Getting Started
 
-Compile:
+### Prerequisites
 
-```powershell
-javac -d out src\SplitCSV.java
+- Java 21+ (JDK)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/contatovictorhugos/split-csv.git
+cd split-csv
 ```
 
-Execute:
+### Running locally
 
-```powershell
+```bash
+# Compile
+javac src/SplitCSV.java -d out
+
+# Place your CSV in the working directory as input.csv
+cp /path/to/your/file.csv input.csv
+
+# Run
 java -cp out SplitCSV
 ```
 
-Ao iniciar, o programa solicita a quantidade de linhas de dados por arquivo:
+The tool will prompt for the number of rows per file (press Enter for the default of 10,000). Output files are written to the `output/` directory.
 
-```text
-Informe as linhas de dados por arquivo [padrao 10000]:
+## Project Structure
+
+```
+split-csv/
+├── src/
+│   └── SplitCSV.java    # Main application class
+└── README.md
 ```
 
-Se pressionar Enter sem digitar um valor, o programa usa o valor padrao configurado em `LINHAS_DADOS_POR_ARQUIVO_PADRAO`.
+## Ecosystem
 
-## Nome dos Arquivos Gerados
+This project is part of the **Projetcs** suite. The following projects work together:
 
-Os arquivos seguem o formato:
+| Project | Role | Depends On |
+|---|---|---|
+| **key-management-service** | REST API — cryptographic key lifecycle management | PostgreSQL |
+| **mail-notifier-service** | REST API — transactional email delivery with encryption | key-management-service API, PostgreSQL, Brevo |
+| **fipe-csv** | REST API — FIPE vehicle pricing table to CSV export | FIPE public API |
+| **bko-project** | Server-rendered web app — internal backoffice administration | PostgreSQL |
+| **split-csv** | CLI tool — splits large CSV files into smaller parts | — |
+| **mergeCSV** | CLI tool — merges multiple CSV files into one | — |
+| **prj_extensao** | Mobile app (React Native / Expo) — Methodist church community app | Firebase |
 
-```text
-nome-original-parte-timestamp.csv
-```
+> **This project**: `split-csv` is the counterpart of `mergeCSV`. Use Split CSV to break a large file into importable chunks, and Merge CSV to reassemble them.
 
-Exemplo:
+## Contributing
 
-```text
-saida_parte_10-1-143021052026.csv
-saida_parte_10-2-143021052026.csv
-```
+1. Fork the repository.
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Commit your changes: `git commit -m 'feat: add your feature'`
+4. Push to the branch: `git push origin feature/your-feature-name`
+5. Open a Pull Request.
 
-## Observacoes
-
-Este projeto divide por quantidade de linhas por arquivo, nao por numero fixo de partes.
-
-Essa abordagem evita a contagem previa de todas as linhas do CSV. Dividir exatamente em `N` partes balanceadas exigiria conhecer o total de linhas antes do split, o que adicionaria uma leitura completa extra do arquivo.
-
-## Requisitos
-
-- Java 8 ou superior.
+Please follow [Conventional Commits](https://www.conventionalcommits.org/) for commit messages.
